@@ -16,7 +16,6 @@ function App() {
   const [selectedAlbum, setSelectedAlbum] = useState(null); // Álbum seleccionado
   const [tracks, setTracks] = useState([]); // Canciones del álbum
   const [loadingTracks, setLoadingTracks] = useState(false); // Carga de canciones
-  const [playingPreview, setPlayingPreview] = useState(null); // ID de canción reproduciéndose
 
   // Obtener token de Spotify al montar el componente
   useEffect(() => {
@@ -168,7 +167,6 @@ function App() {
   const handleBackToAlbums = () => {
     setSelectedAlbum(null);
     setTracks([]);
-    setPlayingPreview(null);
   };
 
   return (
