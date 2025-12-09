@@ -9,10 +9,14 @@ function App() {
   const [searchInput, setSearchInput] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [albums, setAlbums] = useState([]);
-  const [artist, setArtist] = useState(null); // Información del artista
-  const [loading, setLoading] = useState(false); // Estado de carga
-  const [error, setError] = useState(""); // Manejo de errores
-  const [searched, setSearched] = useState(false); // Para saber si ya buscó
+  const [artist, setArtist] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState(null); // Álbum seleccionado
+  const [tracks, setTracks] = useState([]); // Canciones del álbum
+  const [loadingTracks, setLoadingTracks] = useState(false); // Carga de canciones
+  const [playingPreview, setPlayingPreview] = useState(null); // ID de canción reproduciéndose
 
   // Obtener token de Spotify al montar el componente
   useEffect(() => {
@@ -129,6 +133,43 @@ function App() {
       setLoading(false);
     }
   }
+
+  // Función para obtener canciones de un álbum
+  const fetchAlbumTracks = async (albumId) => {
+    setLoadingTracks(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/albums/${albumId}/tracks?limit=50`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const data = await response.json();
+      setTracks(data.items || []);
+    } catch (err) {
+      console.error("Error al obtener canciones:", err);
+      setError("Error al cargar las canciones del álbum");
+    } finally {
+      setLoadingTracks(false);
+    }
+  };
+
+  // Manejar click en un álbum
+  const handleAlbumClick = (album) => {
+    setSelectedAlbum(album);
+    setTracks([]);
+    fetchAlbumTracks(album.id);
+  };
+
+  // Volver a la lista de álbumes
+  const handleBackToAlbums = () => {
+    setSelectedAlbum(null);
+    setTracks([]);
+    setPlayingPreview(null);
+  };
 
   return (
     <>
@@ -285,6 +326,7 @@ function App() {
                     display: "flex",
                     flexDirection: "column",
                   }}
+                  onClick={() => handleAlbumClick(album)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-10px)";
                     e.currentTarget.style.boxShadow = "0 8px 25px rgba(29, 185, 84, 0.3)";
@@ -362,6 +404,169 @@ function App() {
               </div>
             ))}
           </Row>
+        </Container>
+      )}
+
+      {/* VISTA DETALLADA DEL ÁLBUM */}
+      {selectedAlbum && !loading && (
+        <Container className="mb-5">
+          <Button
+            onClick={handleBackToAlbums}
+            style={{
+              backgroundColor: "#1DB954",
+              borderColor: "#1DB954",
+              marginBottom: "30px",
+              fontWeight: "bold",
+            }}
+          >
+            ← Volver a Álbumes
+          </Button>
+
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1DB954 0%, #191414 100%)",
+              color: "white",
+              padding: "40px",
+              borderRadius: "15px",
+              marginBottom: "30px",
+              display: "flex",
+              alignItems: "center",
+              gap: "30px",
+            }}
+          >
+            <img
+              src={selectedAlbum.images[0]?.url || "https://via.placeholder.com/300"}
+              alt={selectedAlbum.name}
+              style={{
+                width: "200px",
+                height: "200px",
+                borderRadius: "10px",
+                objectFit: "cover",
+                border: "4px solid white",
+              }}
+            />
+            <div>
+              <h2 style={{ fontSize: "2.5em", marginBottom: "10px", fontWeight: "bold" }}>
+                {selectedAlbum.name}
+              </h2>
+              <p style={{ fontSize: "1.1em", marginBottom: "10px" }}>
+                Artista: <strong>{artist?.name}</strong>
+              </p>
+              <p style={{ fontSize: "1.1em", marginBottom: "10px" }}>
+                📅 {new Date(selectedAlbum.release_date).toLocaleDateString("es-ES")}
+              </p>
+              <p style={{ fontSize: "1.1em" }}>
+                🎶 {selectedAlbum.total_tracks} canciones
+              </p>
+            </div>
+          </div>
+
+          {/* LISTA DE CANCIONES */}
+          <h3 style={{ marginBottom: "20px", fontSize: "2em", fontWeight: "bold", color: "#1DB954" }}>
+            Canciones ({tracks.length})
+          </h3>
+
+          {loadingTracks ? (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <Spinner
+                animation="border"
+                role="status"
+                style={{ color: "#1DB954", width: "60px", height: "60px" }}
+              >
+                <span className="visually-hidden">Cargando canciones...</span>
+              </Spinner>
+            </div>
+          ) : (
+            <div>
+              {tracks.map((track, index) => (
+                <div
+                  key={track.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "15px",
+                    marginBottom: "10px",
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: "10px",
+                    transition: "background-color 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#efefef";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f5f5f5";
+                  }}
+                >
+                  <span
+                    style={{
+                      marginRight: "15px",
+                      fontSize: "0.9em",
+                      color: "#666",
+                      minWidth: "30px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {index + 1}.
+                  </span>
+
+                  <div style={{ flex: 1 }}>
+                    <p
+                      style={{
+                        margin: "0 0 5px 0",
+                        fontSize: "1em",
+                        fontWeight: "bold",
+                        color: "#191414",
+                      }}
+                    >
+                      {track.name}
+                    </p>
+                    <p
+                      style={{
+                        margin: "0",
+                        fontSize: "0.9em",
+                        color: "#666",
+                      }}
+                    >
+                      {track.artists.map((artist) => artist.name).join(", ")}
+                    </p>
+                  </div>
+
+                  <div style={{ marginRight: "15px", color: "#666" }}>
+                    {Math.floor(track.duration_ms / 60000)}:
+                    {String((track.duration_ms % 60000) / 1000).padStart(2, "0")}
+                  </div>
+
+                  {track.preview_url ? (
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <Button
+                        onClick={() =>
+                          document.getElementById(`audio-${track.id}`)?.play()
+                        }
+                        style={{
+                          backgroundColor: "#1DB954",
+                          borderColor: "#1DB954",
+                          padding: "8px 15px",
+                          fontSize: "0.9em",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        ▶ Escuchar
+                      </Button>
+                      <audio
+                        id={`audio-${track.id}`}
+                        src={track.preview_url}
+                        style={{ display: "none" }}
+                      />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "0.9em", color: "#999" }}>
+                      Sin preview
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </Container>
       )}
 
